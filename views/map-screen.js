@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
-import { StyleSheet, View, Dimensions } from 'react-native';
+import { StyleSheet, View, Dimensions, Button, Text, SafeAreaView } from 'react-native';
 import MapView, {Marker} from 'react-native-maps';
 import * as Permissions from 'expo-permissions';
 import * as Location from 'expo-location';
@@ -12,8 +12,10 @@ class MapScreen extends Component {
     super();
     this.state = {
       latitude: 0,
-      longitude: 0
+      longitude: 0,
+      userMarkers: []
     }
+    this.handlePress = this.handlePress.bind(this);
   }
   async componentDidMount() {
     this.props.fetchLocations();
@@ -37,45 +39,85 @@ class MapScreen extends Component {
       { enableHighAccuracy: true, timeout: 20000, maximumAge: 1000 }
     );
   }
+  handlePress(event) {
+    let currentCoords = {
+      latitude: this.state.latitude,
+      longitude: this.state.longitude
+    }
+    this.setState({
+      userMarkers: [
+        ...this.state.userMarkers, {
+          coords: currentCoords
+        }
+      ]
+    })
+  }
   render() {
     let markers = this.props.locationMarkers;
     let userLoc = { latitude: this.state.latitude, longitude: this.state.longitude };
     return (
-      <View style={styles.container}>
-        <MapView
-          style={styles.mapStyle}
-          region={{
-            latitude: this.state.latitude,
-            longitude: this.state.longitude,
-            latitudeDelta: 0.0922,
-            longitudeDelta: 0.0421
-          }}
-        >
-          <Marker coordinate={userLoc}>
-            <View style={styles.userLocMarker} />
-          </Marker>
-          {!markers
-            ? null
-            : markers.map(marker => {
-                const coords = {
-                  latitude: parseFloat(marker.latitude),
-                  longitude: parseFloat(marker.longitude)
-                };
-                const metadata = `Marker ID: ${marker.id}`;
+      <SafeAreaView style={styles.container}>
+        <View style={{flex: 1}}>
+          <MapView
+            style={styles.mapStyle}
+            region={{
+              latitude: this.state.latitude,
+              longitude: this.state.longitude,
+              latitudeDelta: 0.0922,
+              longitudeDelta: 0.0421
+            }}
+          >
+            <Marker coordinate={userLoc}>
+              <View style={styles.userLocMarker} />
+            </Marker>
+            {/* Database markers */}
+            {!markers
+              ? null
+              : markers.map(marker => {
+                  const coords = {
+                    latitude: parseFloat(marker.latitude),
+                    longitude: parseFloat(marker.longitude)
+                  };
+                  const metadata = `Marker ID: ${marker.id}`;
 
-                return (
-                  <Marker
-                    key={marker.id}
-                    coordinate={coords}
-                    title="{metadata}"
-                    description={metadata}
-                  >
-                    <View style={styles.recyclocationMarker} />
-                  </Marker>
-                );
-              })}
-        </MapView>
-      </View>
+                  return (
+                    <Marker
+                      key={marker.id}
+                      coordinate={coords}
+                      title="{metadata}"
+                      description={metadata}
+                    >
+                      <View style={styles.recyclocationMarker} />
+                    </Marker>
+                  );
+                })}
+                {/* User Markers */}
+                {this.state.userMarkers.map((marker, idx) => {
+                  const coords = {
+                    latitude: parseFloat(marker.latitude),
+                    longitude: parseFloat(marker.longitude)
+                  };
+
+                  return (
+                    <Marker
+                      key={idx}
+                      coordinate={marker.coords}
+                      title="User Marker"
+                      description={'Marker: ' + idx}
+                    >
+                      <View style={styles.recyclocationMarker} />
+                    </Marker>
+                  );
+                })}
+          </MapView>
+        </View>
+        <View style={styles.addBtnView}>
+          <Button
+            title="Add Recyclocation"
+            onPress={this.handlePress}
+          />
+        </View>
+      </SafeAreaView>
     );
   }
 }
@@ -104,7 +146,15 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     padding: 5,
     borderRadius: 50
-  }
+  },
+  addBtnView: {
+      position: 'absolute', //use absolute position to show button on top of the map
+      top: '90%' //for center align
+  },
+  addBtnText: {
+    textAlign: 'center',
+    marginVertical: 8,
+  },
 });
 
 const mapStateToProps = state => {
